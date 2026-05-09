@@ -161,7 +161,7 @@ def get_batch(data, batch_size, seq_len, device):
 ---
 
 > [!copywork] Copywork checkpoint
-> Write stages 1-3 + `get_batch` into `vault/copywork/hf/01_data_tokenizer.py` (~60 lines):
+> Write stages 1-3 + `get_batch` into `copywork/01_data_tokenizer.py` (~60 lines):
 >
 > 1. `load_dataset("wikitext", "wikitext-2-raw-v1")` and join text
 > 2. Create `Tokenizer(models.BPE())` with ByteLevel pre-tokenizer and decoder

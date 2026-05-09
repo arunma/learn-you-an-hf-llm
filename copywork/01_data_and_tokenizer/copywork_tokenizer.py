@@ -1,7 +1,7 @@
 """Copywork target — Section 01b — BPE tokenizer training.
 
 Answer file:  hf_pipeline/02_tokenizer.py   (~60 lines)
-Journal:      ~/projects/ai/learn-you-an-llm/journal/hf/hf_01_data_and_tokenizer.md
+Journal:      journal/01_data_and_tokenizer.md
 
 What you're building here:
   - Read train.txt produced by copywork_data.py
@@ -25,7 +25,7 @@ Method:
   2. Type each line. Pause on the four assignments to `tokenizer.pre_tokenizer`,
      `.decoder`, the `BpeTrainer(...)` config, and the chunk generator.
   3. Run (after copywork_data.py has produced train.txt):
-         python vault/copywork/hf/01_data_and_tokenizer/copywork_tokenizer.py
+         python copywork/01_data_and_tokenizer/copywork_tokenizer.py
   4. You should see:
          Vocab size:       4096
          Sample text:      'The quick brown fox jumps over the lazy dog'

@@ -48,9 +48,9 @@ nanochat is deliberately framework-free — every line is yours to read. That's 
 
 ### Related sections
 
-- Data and tokenizer details → [hf_01_data_and_tokenizer.md](hf_01_data_and_tokenizer.md)
-- Model and config classes → [hf_02_model_and_config.md](hf_02_model_and_config.md)
-- Training loop and `Trainer` → [hf_03_training_loop.md](hf_03_training_loop.md)
-- Evaluation and generation → [hf_04_evaluation_and_generation.md](hf_04_evaluation_and_generation.md)
-- Save/load/Hub → [hf_05_save_load_hub.md](hf_05_save_load_hub.md)
-- Internals deep dive → [hf_06_deep_dive_internals.md](hf_06_deep_dive_internals.md)
+- Data and tokenizer details → [01_data_and_tokenizer.md](01_data_and_tokenizer.md)
+- Model and config classes → [02_model_and_config.md](02_model_and_config.md)
+- Training loop and `Trainer` → [03_training_loop.md](03_training_loop.md)
+- Evaluation and generation → [04_evaluation_and_generation.md](04_evaluation_and_generation.md)
+- Save/load/Hub → [05_save_load_hub.md](05_save_load_hub.md)
+- Internals deep dive → [06_deep_dive_internals.md](06_deep_dive_internals.md)

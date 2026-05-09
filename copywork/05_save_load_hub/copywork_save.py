@@ -1,7 +1,7 @@
 """Copywork target — Section 05 — Save and share.
 
 Answer file:  hf_pipeline/05_save_share.py   (~80 lines)
-Journal:      ~/projects/ai/learn-you-an-llm/journal/hf/hf_05_save_load_hub.md
+Journal:      journal/05_save_load_hub.md
 
 What you're building here:
   - Load the trained model from ~/.cache/hf_pipeline/model_copywork/
@@ -22,7 +22,7 @@ Method:
          from copywork_model import NanoChatModel
 
   4. After section 03 has produced ~/.cache/hf_pipeline/model_copywork/, run:
-         python vault/copywork/hf/05_save_load_hub/copywork_save.py
+         python copywork/05_save_load_hub/copywork_save.py
 
   5. Output: ~/.cache/hf_pipeline/my-first-llm/ with five files:
          config.json

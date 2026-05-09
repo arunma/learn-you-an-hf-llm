@@ -28,6 +28,6 @@ Everything that runs *before* the model sees a tensor:
 
 ### Related sections
 
-- Pipeline overview → [hf_00_overview.md](hf_00_overview.md)
-- Model and config → [hf_02_model_and_config.md](hf_02_model_and_config.md)
+- Pipeline overview → [00_overview.md](00_overview.md)
+- Model and config → [02_model_and_config.md](02_model_and_config.md)
 - nanochat counterpart → [01_tokenisation.md](../01_tokenisation.md)

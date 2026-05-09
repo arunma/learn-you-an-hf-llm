@@ -177,7 +177,7 @@ HF Trainer wraps the same 5 lines plus: gradient accumulation, mixed precision, 
 ---
 
 > [!copywork] Copywork checkpoint
-> Write stages 4-5 into `vault/copywork/hf/02_model_training.py` (~55 lines):
+> Write stages 4-5 into `copywork/02_model_training.py` (~55 lines):
 >
 > 1. `LlamaConfig(...)` with all fields
 > 2. `LlamaForCausalLM(config).to(DEVICE)`

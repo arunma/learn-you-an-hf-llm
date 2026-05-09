@@ -1,7 +1,7 @@
 """Copywork target — Section 04 — Evaluation and generation.
 
 Answer file:  hf_pipeline/04_eval_and_generate.py   (~115 lines)
-Journal:      ~/projects/ai/learn-you-an-llm/journal/hf/hf_04_evaluation_and_generation.md
+Journal:      journal/04_evaluation_and_generation.md
 
 What you're building here:
   - Load the trained NanoChatModel from ~/.cache/hf_pipeline/model_copywork/
@@ -21,7 +21,7 @@ Method:
          from copywork_model import NanoChatModel
 
   4. After section 03 has produced ~/.cache/hf_pipeline/model_copywork/, run:
-         python vault/copywork/hf/04_evaluation_and_generation/copywork_eval.py
+         python copywork/04_evaluation_and_generation/copywork_eval.py
 
   5. Expect: a perplexity number (probably 100-300 for a 500-step run on WikiText-2)
      and gibberish-but-statistical text samples. That's the correct outcome —

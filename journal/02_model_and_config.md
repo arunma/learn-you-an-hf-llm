@@ -189,7 +189,7 @@ Two things worth noticing:
 
 ### Related sections
 
-- Pipeline overview → [hf_00_overview.md](hf_00_overview.md)
-- Data and tokenizer → [hf_01_data_and_tokenizer.md](hf_01_data_and_tokenizer.md)
-- Training loop → [hf_03_training_loop.md](hf_03_training_loop.md)
+- Pipeline overview → [00_overview.md](00_overview.md)
+- Data and tokenizer → [01_data_and_tokenizer.md](01_data_and_tokenizer.md)
+- Training loop → [03_training_loop.md](03_training_loop.md)
 - nanochat counterpart → [06_transformer_block.md](../06_transformer_block.md)

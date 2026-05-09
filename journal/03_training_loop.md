@@ -335,7 +335,7 @@ output = W·x + (alpha / r) · B·A·x
 
 ##### The other LoRA hyperparameters
 
-- `target_modules`: which linear layers to wrap. Start with `["q_proj", "v_proj"]`. For instruction tuning and DPO, modern recipes wrap *all* linear layers (`q_proj`, `k_proj`, `v_proj`, `o_proj`, plus the three MLP projections) for max quality. See [hf_02 attention naming](hf_02_model_and_config.md#attention-layer-naming--what-q_proj-k_proj-v_proj-o_proj-actually-are).
+- `target_modules`: which linear layers to wrap. Start with `["q_proj", "v_proj"]`. For instruction tuning and DPO, modern recipes wrap *all* linear layers (`q_proj`, `k_proj`, `v_proj`, `o_proj`, plus the three MLP projections) for max quality. See [hf_02 attention naming](02_model_and_config.md#attention-layer-naming--what-q_proj-k_proj-v_proj-o_proj-actually-are).
 - `lora_dropout`: 0.05–0.1 typical.
 
 **Use PEFT when** GPU memory is the constraint (almost always), when you want to ship many task-specific adapters as MB-sized files, or when you want to avoid catastrophic forgetting on the base model.
@@ -465,7 +465,7 @@ Pretraining from scratch?
 
 ### Related sections
 
-- Pipeline overview → [hf_00_overview.md](hf_00_overview.md)
-- Model and config → [hf_02_model_and_config.md](hf_02_model_and_config.md)
-- Evaluation and generation → [hf_04_evaluation_and_generation.md](hf_04_evaluation_and_generation.md)
+- Pipeline overview → [00_overview.md](00_overview.md)
+- Model and config → [02_model_and_config.md](02_model_and_config.md)
+- Evaluation and generation → [04_evaluation_and_generation.md](04_evaluation_and_generation.md)
 - nanochat counterpart → [07_training_and_generation.md](../07_training_and_generation.md)

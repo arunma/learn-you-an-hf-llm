@@ -122,7 +122,7 @@ my-first-llm/
 ---
 
 > [!copywork] Copywork checkpoint
-> Write stages 6-8 into `vault/copywork/hf/03_eval_generate_save.py` (~50 lines):
+> Write stages 6-8 into `copywork/03_eval_generate_save.py` (~50 lines):
 >
 > 1. Eval loop: `model.eval()`, `torch.no_grad()`, compute avg loss, perplexity, BPB
 > 2. Generate: encode prompt, `model.generate(...)` with temperature and top_k

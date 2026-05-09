@@ -31,7 +31,7 @@ The detail layer underneath the other HF notes. Cross-references everywhere.
 
 ### Related sections
 
-- Pipeline overview → [hf_00_overview.md](hf_00_overview.md)
-- Model and config → [hf_02_model_and_config.md](hf_02_model_and_config.md)
-- Save / load / Hub → [hf_05_save_load_hub.md](hf_05_save_load_hub.md)
+- Pipeline overview → [00_overview.md](00_overview.md)
+- Model and config → [02_model_and_config.md](02_model_and_config.md)
+- Save / load / Hub → [05_save_load_hub.md](05_save_load_hub.md)
 - nanochat counterpart → [08_appendix_modern_techniques.md](../08_appendix_modern_techniques.md)

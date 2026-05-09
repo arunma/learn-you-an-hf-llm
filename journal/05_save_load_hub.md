@@ -31,6 +31,6 @@ Everything that turns a trained model into something reusable:
 
 ### Related sections
 
-- Pipeline overview → [hf_00_overview.md](hf_00_overview.md)
-- Evaluation and generation → [hf_04_evaluation_and_generation.md](hf_04_evaluation_and_generation.md)
-- Internals deep dive → [hf_06_deep_dive_internals.md](hf_06_deep_dive_internals.md)
+- Pipeline overview → [00_overview.md](00_overview.md)
+- Evaluation and generation → [04_evaluation_and_generation.md](04_evaluation_and_generation.md)
+- Internals deep dive → [06_deep_dive_internals.md](06_deep_dive_internals.md)

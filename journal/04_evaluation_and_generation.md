@@ -174,7 +174,7 @@ attention_mask  = encoded["attention_mask"]
 
 ### Related sections
 
-- Pipeline overview → [hf_00_overview.md](hf_00_overview.md)
-- Training loop → [hf_03_training_loop.md](hf_03_training_loop.md)
-- Save / load / Hub → [hf_05_save_load_hub.md](hf_05_save_load_hub.md)
+- Pipeline overview → [00_overview.md](00_overview.md)
+- Training loop → [03_training_loop.md](03_training_loop.md)
+- Save / load / Hub → [05_save_load_hub.md](05_save_load_hub.md)
 - nanochat counterpart → [07_training_and_generation.md](../07_training_and_generation.md)
