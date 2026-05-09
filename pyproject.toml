@@ -1,0 +1,24 @@
+[project]
+name = "learn-you-an-hf-llm"
+version = "0.1.0"
+description = "Build a tiny LLM from scratch using the Hugging Face stack."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+dependencies = [
+  "torch>=2.1",
+  "transformers>=4.40",
+  "tokenizers>=0.15",
+  "datasets>=2.14",
+  "safetensors>=0.4",
+  "tensorboard>=2.15",
+]
+
+[project.optional-dependencies]
+dev   = ["ruff", "black", "mypy"]
+hub   = ["huggingface_hub"]
+wandb = ["wandb"]
+
+[tool.setuptools.packages.find]
+include = ["hf_nanochat*", "hf_pipeline*"]
