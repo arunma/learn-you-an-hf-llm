@@ -244,7 +244,7 @@ training progresses (`train/loss`, `train/lr`, `val/loss`,
 laptop's browser, you need two things: a TensorBoard server running on
 the pod, and an SSH tunnel from your laptop to that server.
 
-**On the pod**, in a second tmux window (`Ctrl-b c` to create one,
+**On the pod**, in a second tmux window (`Ctrl-b c` to create one,A
 `Ctrl-b 0` / `Ctrl-b 1` to switch):
 
 ```bash
@@ -348,9 +348,33 @@ listed, it's still costing you.
 
 ### 11. Run inference locally
 
-Back on your laptop, point your existing
-`copywork/04_evaluation_and_generation/copywork_eval.py` at the new
-artifacts:
+Back on your laptop. Two options:
+
+**A. Gradio web UI (recommended — LM Studio-shaped experience)**
+
+A purpose-built `infer.py` ships in this folder. It loads the trained
+model + tokenizer and serves a browser UI with prompt textbox,
+temperature/top-k/seed controls, and example prompts.
+
+```bash
+pip install -e .                     # gradio is now a dep of the repo
+python runs/h100_tinystories/infer.py
+```
+
+Browser auto-opens at `http://127.0.0.1:7860`. Works on MPS, CUDA, or
+CPU — auto-detected.
+
+**Why not LM Studio?** LM Studio (and its `llama.cpp` backend) only
+supports a fixed set of architectures (Llama, Qwen, Gemma, Phi, GPT-2,
+etc.). Our `NanoChatModel` is a custom architecture using ReLU²
+activation in the MLP (vs Llama's SwiGLU), so it can't be converted
+to GGUF without retraining the MLP — not worth the effort for a
+30M-param experiment.
+
+**B. CLI prompts via your existing `copywork_eval.py`**
+
+If you'd rather use your already-typed copywork file, point it at the
+new artifacts:
 
 ```python
 RUN_DIR = Path("runs/h100_tinystories")

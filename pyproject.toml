@@ -13,6 +13,7 @@ dependencies = [
   "datasets>=2.14",
   "safetensors>=0.4",
   "tensorboard>=2.15",
+  "gradio>=4.0",
 ]
 
 [project.optional-dependencies]
