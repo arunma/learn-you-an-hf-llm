@@ -119,52 +119,150 @@ extras (`tokenizers`, `datasets`, `safetensors`, `tensorboard`).
 
 ---
 
-## Continue from `README.md` step 6
-
-The remaining steps are identical regardless of provider:
-
-- **Step 6** — verify GPU + PyTorch (`nvidia-smi`, `torch.cuda.is_available()`)
-- **Step 7** — `python prepare_data.py` (~5 min)
-- **Step 8** — `tmux new -s train; python train.py | tee train.log` (~30 min on H100, ~60–90 min on A100)
-- **Step 9** — scp checkpoints back to your laptop
-- **Step 10** — **terminate the pod** (RunPod equivalent below)
-- **Step 11** — run inference locally
-
-### RunPod-specific notes
-
-**SCP back to your laptop (step 9).** Use the same SSH port RunPod
-assigned:
+### 6. Verify GPU + PyTorch
 
 ```bash
-# from your laptop
+nvidia-smi
+# expect: 1× H100 (or whatever you picked), ~80 GB free, CUDA 12.x
+
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0))"
+# expect: True NVIDIA H100 80GB HBM3
+```
+
+If `torch.cuda.is_available()` returns `False` despite `nvidia-smi`
+working, the pod's PyTorch wasn't built with CUDA. Reinstall:
+
+```bash
+pip install --force-reinstall torch --index-url https://download.pytorch.org/whl/cu124
+```
+
+### 7. Prepare the dataset and tokenizer (~5 min)
+
+```bash
+cd runs/h100_tinystories
+python prepare_data.py
+```
+
+Downloads TinyStories from HF Hub (~1 GB), writes `data_cache/train.txt`
+and `val.txt`, then trains a BPE tokenizer saved to
+`data_cache/tokenizer.json`. Only needs to run once per pod.
+
+### 8. Run training inside tmux (~30 min on H100)
+
+**Always wrap training in tmux.** A network blip kills your SSH session,
+and without tmux it kills the training too — losing 30 minutes of paid
+compute. Skipping this step is the most common expensive mistake.
+
+```bash
+tmux new -s train
+python train.py | tee train.log
+```
+
+`tee` writes the output to both your terminal and `train.log` so you
+can scp the log out later if you want to inspect the run after the
+fact.
+
+You'll see something like:
+
+```
+Tokenizing corpus...
+Train tokens: 470,123,456  |  Val tokens: 4,891,234
+Parameters: 28,341,248, Device: cuda
+Compiling model (first step will be slow due to graph tracing)...
+Step :     0/15000, Train: 8.32, val: 8.31, ppl: 4054.3, ...
+Step :   500/15000, Train: 4.89, val: 4.92, ppl: 137.0, ...
+...
+Step : 14999/15000, Train: 1.62, val: 1.71, ppl: 5.5, ...
+Training completed in : 1834.21s
+Final valuation loss : 1.7100, Perplexity: 5.5300
+```
+
+Wait until at least the second eval line prints (~step 500) so you
+confirm loss is dropping from ~8 toward ~5. Then **detach with
+`Ctrl-b` then `d`** — training keeps running in the background. You
+can close your SSH connection without losing it.
+
+To reattach later: `tmux attach -t train`.
+
+To watch the log without reattaching to tmux:
+
+```bash
+tail -f /workspace/learn-you-an-hf-llm/runs/h100_tinystories/train.log
+```
+
+Total time including setup, tokenization, compile warm-up, and 15K
+training steps: ~30–35 min on H100 SXM.
+
+### 9. Pull checkpoints back to your laptop
+
+When training prints `Final model saved`, scp the checkpoint folder
+home. Use the SSH port RunPod assigned (in the Connect dialog —
+**not** port 22):
+
+```bash
+# from your laptop, in the repo root
 scp -P 12345 -r root@123.45.67.89:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/checkpoints \
        runs/h100_tinystories/checkpoints
+
+# also pull the tokenizer if you want local inference
+scp -P 12345 root@123.45.67.89:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/data_cache/tokenizer.json \
+       runs/h100_tinystories/data_cache/tokenizer.json
 ```
 
 The `-P` (capital P) is mandatory; without it scp tries port 22 and
-fails. Default working directory inside the pod is `/workspace`, not
-`/root` — your `git clone` likely landed there.
+fails. RunPod's working directory inside the pod is `/workspace`, not
+`/root` — the `git clone` lives there.
 
-**Stop vs Terminate (step 10).** In RunPod:
+**Verify the checkpoint actually downloaded *before* terminating
+anything:**
 
-- **Stop** — pauses the pod, preserves your volume. Still bills
-  $0.10/GB/month for the disk. Useful if you might want to come back and
-  resume; bad if you'll forget about it.
-- **Terminate** — deletes the pod and its volume. **Use this** for a
-  one-shot experiment.
-
-```text
-RunPod dashboard → Pods → your pod → ⋯ menu → Terminate
+```bash
+ls runs/h100_tinystories/checkpoints/final/
+# expect: config.json  model.safetensors
 ```
 
-Confirm with the pod name. Verify it's gone:
+### 10. Terminate the pod AND delete the network volume
 
-```text
-RunPod dashboard → Pods → expect your pod no longer listed
+Two separate cleanup steps. Skipping either keeps billing.
+
+**10a. Terminate the pod**
+
+RunPod dashboard → **Pods** → your pod → **⋯ menu → Terminate** →
+confirm by typing the pod name. Verify the pod no longer appears in
+the list.
+
+**Stop ≠ Terminate.** Stop pauses the pod but keeps billing its disk
+(~$0.10/GB/month). Always pick Terminate for a one-shot experiment.
+
+**10b. Delete the network volume — separately**
+
+When you set "Persistent storage" to Network volume during deploy,
+RunPod auto-created a 50 GB volume named something like
+`nanochat-hf-train-<random>`. **Terminating the pod does NOT delete
+this volume.** It keeps billing ~$5/month forever until you remove it
+manually.
+
+RunPod dashboard → **Storage** → find the auto-created volume → **⋯
+menu → Delete** → confirm.
+
+Eyeball the Storage page before logging off; if a volume is still
+listed, it's still costing you.
+
+### 11. Run inference locally
+
+Back on your laptop, point your existing
+`copywork/04_evaluation_and_generation/copywork_eval.py` at the new
+artifacts:
+
+```python
+RUN_DIR = Path("runs/h100_tinystories")
+tokenizer = Tokenizer.from_file(str(RUN_DIR / "data_cache" / "tokenizer.json"))
+model = NanoChatModel.from_pretrained(RUN_DIR / "checkpoints" / "final").to(DEVICE)
 ```
 
-Don't trust your memory. Eyeball the pods list at the end of every
-session before logging off.
+TinyStories is a children's-stories corpus, so prompts that match the
+domain produce the most coherent output — `"Once upon a time"` works
+better than `"The president of"`.
 
 ---
 
