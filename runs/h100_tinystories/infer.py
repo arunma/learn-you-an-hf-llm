@@ -20,6 +20,7 @@ from pathlib import Path
 import gradio as gr
 import torch
 from tokenizers import Tokenizer
+from torch.nn.attention import SDPBackend, sdpa_kernel
 
 from hf_nanochat.model import NanoChatModel
 
@@ -58,7 +59,11 @@ def generate(
         torch.manual_seed(int(seed))
 
     input_ids = torch.tensor([tokenizer.encode(prompt).ids], device=DEVICE)
-    with torch.no_grad():
+    # Force the math SDPA backend: optimized backends (flash / mem-efficient)
+    # on MPS sometimes produce NaN logits with is_causal=True, which then
+    # crash torch.multinomial during sampling. The math backend is bug-free.
+    # Speed loss is negligible at 28M params during single-stream inference.
+    with torch.no_grad(), sdpa_kernel(SDPBackend.MATH):
         output = model.generate(
             input_ids,
             max_new_tokens=int(max_new_tokens),
