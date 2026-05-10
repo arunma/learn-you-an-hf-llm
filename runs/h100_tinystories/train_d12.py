@@ -5,9 +5,11 @@ RoPE, RMSNorm, ReLU² MLP), same corpus (TinyStories), same training loop
 — bumped depth and width to give the model enough capacity to plan
 multi-sentence narratives instead of just locally-plausible fragments.
 
-Why a separate file vs editing train.py: lets you keep the d8 baseline
-trained and analysed for comparison. Outputs go to checkpoints_d12/ and
-tb_logs_d12/ so they don't collide with train.py's outputs.
+Two source files (train.py + train_d12.py) document two configs, but
+they share output paths: both write to checkpoints/ and tb_logs/. The
+last run wins — running train_d12.py overwrites the d8 artifacts in
+those directories. infer.py picks up whichever model is currently in
+checkpoints/final/, no code changes needed.
 
 Configured for the "real coherent stories" recipe:
   - 123M-param NanoChatModel  (n_layer=12, n_embd=768, n_head=12)
@@ -41,11 +43,11 @@ from torch.utils.tensorboard import SummaryWriter
 
 from hf_nanochat.model import NanoChatConfig, NanoChatModel
 
-# Paths — distinct output dirs so the d8 baseline (train.py) isn't overwritten
+# Paths — same as train.py; last run wins. infer.py reads checkpoints/final/.
 RUN_DIR = Path(__file__).resolve().parent
-DATA_DIR = RUN_DIR / "data_cache"          # SHARED with train.py — same tokenizer, same corpus
-CHECKPOINT_DIR = RUN_DIR / "checkpoints_d12"
-TB_LOG_DIR = RUN_DIR / "tb_logs_d12"
+DATA_DIR = RUN_DIR / "data_cache"
+CHECKPOINT_DIR = RUN_DIR / "checkpoints"
+TB_LOG_DIR = RUN_DIR / "tb_logs"
 
 # Model — d12: 123M params (vs d8's 28M). All four knobs scale together.
 N_LAYERS = 12               # was 8
