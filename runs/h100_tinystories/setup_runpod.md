@@ -276,40 +276,99 @@ When training finishes you can kill the TensorBoard process with
 `Ctrl-c` in its tmux window. Or leave it running until you terminate
 the pod.
 
-### 9. Pull checkpoints back to your laptop
+### 9. Pull artifacts back to your laptop
 
-When training prints `Final model saved`, scp the checkpoint folder
-home using the same SSH method you used in step 4.
+When training prints `Final model saved`, pull these four things from
+the pod. Use the same SSH method you used in step 4.
+
+| Artifact | Why you want it | Size | Required? |
+|---|---|---|---|
+| `checkpoints/` | Trained model weights — needed for inference | ~150 MB × ~10 = ~1.5 GB | **yes** |
+| `data_cache/tokenizer.json` | Tokenizer — needed to encode/decode prompts | ~150 KB | **yes** |
+| `tb_logs/` | TensorBoard event files — view loss/lr curves locally | ~5 MB | recommended |
+| `train.log` | Text log of the run (the `tee` output) | ~50 KB | optional |
+
+You can skip `data_cache/train_ids.pt` and `val_ids.pt` — those are
+just regenerable tokenization caches. Pulling them locally serves no
+purpose.
 
 **Proxy method (option A — what most people use):**
 
 ```bash
 # from your laptop, in the repo root
-scp -i ~/.ssh/<your-key> -r \
-    <pod-id>-<hash>@ssh.runpod.io:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/checkpoints \
-    runs/h100_tinystories/checkpoints
+POD=<pod-id>-<hash>@ssh.runpod.io
+KEY=~/.ssh/<your-key>
+REMOTE=/workspace/learn-you-an-hf-llm/runs/h100_tinystories
 
-# also pull the tokenizer if you want local inference
-scp -i ~/.ssh/<your-key> \
-    <pod-id>-<hash>@ssh.runpod.io:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/data_cache/tokenizer.json \
+# 1. checkpoints (required)
+scp -i $KEY -r $POD:$REMOTE/checkpoints runs/h100_tinystories/checkpoints
+
+# 2. tokenizer (required for inference)
+scp -i $KEY $POD:$REMOTE/data_cache/tokenizer.json \
     runs/h100_tinystories/data_cache/tokenizer.json
+
+# 3. TensorBoard event files (so you can view training curves locally)
+scp -i $KEY -r $POD:$REMOTE/tb_logs runs/h100_tinystories/tb_logs
+
+# 4. training log (optional — keep alongside the run for reference)
+scp -i $KEY $POD:$REMOTE/train.log runs/h100_tinystories/train.log
 ```
 
 No `-P` flag — the proxy listens on default port 22.
 
 **Exposed TCP method (option B):**
 
+Same idea, different command form:
+
 ```bash
-scp -P <pod-port> -i ~/.ssh/<your-key> -r \
-    root@<pod-ip>:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/checkpoints \
-    runs/h100_tinystories/checkpoints
+PORT=<pod-port>
+HOST=root@<pod-ip>
+KEY=~/.ssh/<your-key>
+REMOTE=/workspace/learn-you-an-hf-llm/runs/h100_tinystories
+
+scp -P $PORT -i $KEY -r $HOST:$REMOTE/checkpoints runs/h100_tinystories/checkpoints
+scp -P $PORT -i $KEY    $HOST:$REMOTE/data_cache/tokenizer.json runs/h100_tinystories/data_cache/tokenizer.json
+scp -P $PORT -i $KEY -r $HOST:$REMOTE/tb_logs runs/h100_tinystories/tb_logs
+scp -P $PORT -i $KEY    $HOST:$REMOTE/train.log runs/h100_tinystories/train.log
 ```
 
 The `-P` (capital P, not `-p`) is mandatory; without it scp tries port
 22 and fails.
 
 RunPod's working directory inside the pod is `/workspace`, not `/root`
-— the `git clone` lives there.
+— the `git clone` lives there. (If you cloned to `/` instead, swap
+`/workspace/learn-you-an-hf-llm` for `/learn-you-an-hf-llm` in the
+remote paths above.)
+
+**Verify before you terminate** the pod (next step):
+
+```bash
+ls runs/h100_tinystories/checkpoints/final/
+# expect: config.json  model.safetensors
+
+ls runs/h100_tinystories/tb_logs/ | head
+# expect: events.out.tfevents.<unix-epoch>.<pod-host>.<pid>.<seq>
+
+ls -lh runs/h100_tinystories/data_cache/tokenizer.json
+# expect: ~150 KB
+```
+
+If any of those are missing, do NOT terminate the pod yet — re-scp first.
+
+### 9a. (Optional) View training curves locally with TensorBoard
+
+Now that `tb_logs/` is on your laptop, you can launch TensorBoard
+locally with no SSH gymnastics:
+
+```bash
+pip install tensorboard          # if not already installed
+tensorboard --logdir=runs/h100_tinystories/tb_logs --port=6006
+# open http://localhost:6006
+```
+
+Five scalar tags: `train/loss`, `train/lr`, `val/loss`,
+`val/perplexity`, `perf/tokens_per_sec`. Drag the smoothing slider to
+~0.95 to denoise the per-step train loss curve.
 
 **Verify the checkpoint actually downloaded *before* terminating
 anything:**
