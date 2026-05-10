@@ -1,10 +1,7 @@
 import torch
 import torch.nn.functional as F
-from sympy.physics.units import temperature
 from torch import nn
 from torch.nn import Linear, Embedding, ModuleList
-from torch.nn.functional import relu
-from torch.testing._internal import generated
 from transformers import PreTrainedModel, GenerationMixin
 from transformers.modeling_outputs import CausalLMOutput
 
@@ -117,23 +114,24 @@ class NanoChatModel(PreTrainedModel, GenerationMixin):
             torch.nn.init.normal_(module.weight, mean=0, std=0.02)
 
     def forward(self, input_ids, labels=None, **kwargs):
+        #input_ids = (B,T)
         B, T = input_ids.size()
 
         cos = self.cos[:, :T].to(input_ids.device)
         sin = self.sin[:, :T].to(input_ids.device)
 
-        x = self.wte(input_ids)
+        x = self.wte(input_ids) # (B,T,C)
         x = norm(x)
 
         for block in self.blocks:
-            x = block(x, cos, sin)
-        x = norm(x)
+            x = block(x, cos, sin) # (B,T,C)
+        x = norm(x)  # (B,T,C)
 
-        logits = self.lm_head(x)
+        logits = self.lm_head(x) #(B,T,V)
 
         loss = None
         if labels is not None:
-            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=-1)
+            loss = F.cross_entropy(logits.view(-1, logits.size(-1)), labels.view(-1), ignore_index=-1) # (B*T, V)
 
         return CausalLMOutput(loss=loss, logits=logits)
 

@@ -36,3 +36,28 @@ Type your code below. Delete this docstring once you've internalised the
 structure.
 ----------------------------------------------------------------------------
 """
+import os.path
+from pathlib import Path
+
+from datasets import load_dataset
+
+CACHE_DIR = Path(os.path.expanduser("~/.cache/hf_pipeline/"))
+
+def main() -> None:
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+    dataset= load_dataset(path ="Salesforce/wikitext", name ="wikitext-2-raw-v1")
+
+    train_text = "\n".join(t for t in dataset["train"]["text"] if t.strip())
+    val_text = "\n".join(t for t in dataset["validation"]["text"] if t.strip())
+
+    (CACHE_DIR /"train.txt").write_text(train_text)
+    (CACHE_DIR /"val.txt").write_text(val_text)
+
+    print(f"Train data: {len(train_text)}, words: {len(train_text.split())}")
+    print(f"Validation data: {len(val_text)}, words: {len(val_text.split())}")
+
+
+if __name__ == "__main__":
+    main()
+

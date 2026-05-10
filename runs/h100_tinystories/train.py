@@ -1,0 +1,159 @@
+"""Single-H100 training run on TinyStories.
+
+This is your copywork_train.py adapted for a real training run on a rented
+Lambda Labs H100. See README.md in this folder for the full Lambda workflow.
+
+Configured for the "fairly coherent in ~30 minutes on H100" recipe:
+  - 28M-param NanoChatModel  (n_layer=8, n_embd=512)
+  - TinyStories corpus       (~470M tokens)
+  - 15,000 steps             (~250M training tokens at BS=64, SEQ_LEN=512)
+  - Cosine LR with 200-step linear warmup
+  - bf16 autocast + torch.compile for H100 throughput
+  - Periodic checkpoints every 2,500 steps
+
+Run AFTER `prepare_data.py` has populated ./data_cache/.
+"""
+import math
+import time
+from pathlib import Path
+
+import torch
+from tokenizers import Tokenizer
+
+from hf_nanochat.model import NanoChatConfig, NanoChatModel
+
+# Paths — isolated from the WikiText copywork cache at ~/.cache/hf_pipeline
+RUN_DIR = Path(__file__).resolve().parent
+DATA_DIR = RUN_DIR / "data_cache"
+CHECKPOINT_DIR = RUN_DIR / "checkpoints"
+
+# Model — bumped from copywork's 4/4/256/256 to capture coherent stories
+N_LAYERS = 8
+N_HEADS = 8
+N_EMBD = 512
+SEQ_LEN = 512
+
+# Training — bigger batch, more steps, AdamW + warmup+cosine schedule
+BATCH_SIZE = 64
+LR = 3e-4
+WEIGHT_DECAY = 0.1
+NUM_STEPS = 15_000
+WARMUP_STEPS = 200
+EVAL_EVERY = 500
+EVAL_BATCHES = 20
+SAVE_EVERY = 2_500
+GRAD_CLIP = 1.0
+
+DEVICE = "cuda"  # this script is H100-only
+
+
+def get_batch(data: torch.Tensor, batch_size, seq_len, device):
+    ix = torch.randint(len(data) - seq_len - 1, (batch_size,))
+    x = torch.stack([data[i:i + seq_len] for i in ix]).to(device, non_blocking=True)
+    y = torch.stack([data[i + 1:i + seq_len + 1] for i in ix]).to(device, non_blocking=True)
+    return x, y
+
+
+def cosine_with_warmup(step):
+    """Linear warmup for WARMUP_STEPS, then cosine decay to 0."""
+    if step < WARMUP_STEPS:
+        return step / WARMUP_STEPS
+    progress = (step - WARMUP_STEPS) / max(1, NUM_STEPS - WARMUP_STEPS)
+    return 0.5 * (1.0 + math.cos(math.pi * progress))
+
+
+def save_checkpoint(model, path):
+    """Save the underlying (uncompiled) model in HF format."""
+    base = model._orig_mod if hasattr(model, "_orig_mod") else model
+    base.save_pretrained(path)
+
+
+def main() -> None:
+    CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+
+    tokenizer = Tokenizer.from_file(str(DATA_DIR / "tokenizer.json"))
+    train_text = (DATA_DIR / "train.txt").read_text()
+    val_text = (DATA_DIR / "val.txt").read_text()
+
+    print("Tokenizing corpus...")
+    train_ids = torch.tensor(tokenizer.encode(train_text).ids, dtype=torch.long)
+    val_ids = torch.tensor(tokenizer.encode(val_text).ids, dtype=torch.long)
+    print(f"Train tokens: {len(train_ids):,}  |  Val tokens: {len(val_ids):,}")
+
+    config = NanoChatConfig(
+        sequence_len=SEQ_LEN,
+        vocab_size=tokenizer.get_vocab_size(),
+        n_layer=N_LAYERS,
+        n_head=N_HEADS,
+        n_kv_head=N_HEADS,
+        n_embd=N_EMBD,
+    )
+
+    model = NanoChatModel(config).to(DEVICE)
+    print(f"Parameters: {model.num_parameters():,}, Device: {DEVICE}")
+
+    print("Compiling model (first step will be slow due to graph tracing)...")
+    model = torch.compile(model)
+
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=LR,
+        betas=(0.9, 0.95),
+        weight_decay=WEIGHT_DECAY,
+    )
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, cosine_with_warmup)
+
+    model.train()
+    t0 = time.time()
+    val_loss = float("inf")
+
+    for step in range(NUM_STEPS):
+        x, y = get_batch(train_ids, BATCH_SIZE, SEQ_LEN, DEVICE)
+
+        with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+            out = model(x, labels=y)
+
+        out.loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), GRAD_CLIP)
+        optimizer.step()
+        scheduler.step()
+        optimizer.zero_grad(set_to_none=True)
+
+        if step % EVAL_EVERY == 0 or step == NUM_STEPS - 1:
+            model.eval()
+            with torch.no_grad():
+                losses = []
+                for _ in range(EVAL_BATCHES):
+                    vx, vy = get_batch(val_ids, BATCH_SIZE, SEQ_LEN, DEVICE)
+                    with torch.autocast(device_type="cuda", dtype=torch.bfloat16):
+                        out_v = model(vx, labels=vy)
+                    losses.append(out_v.loss.item())
+                val_loss = sum(losses) / len(losses)
+            model.train()
+
+            elapsed = time.time() - t0
+            tok_per_sec = (step + 1) * BATCH_SIZE * SEQ_LEN / elapsed if elapsed > 0 else 0
+            current_lr = scheduler.get_last_lr()[0]
+            print(
+                f"Step : {step:5d}/{NUM_STEPS}, "
+                f"Train: {out.loss.item():.4f}, "
+                f"val: {val_loss:.4f}, "
+                f"ppl: {math.exp(val_loss):.1f}, "
+                f"lr: {current_lr:.2e}, "
+                f"{tok_per_sec:,.0f} tok/s"
+            )
+
+        if (step + 1) % SAVE_EVERY == 0 and step > 0:
+            ckpt_path = CHECKPOINT_DIR / f"step_{step + 1:05d}"
+            save_checkpoint(model, ckpt_path)
+            print(f"  -> checkpoint saved: {ckpt_path}")
+
+    save_path = CHECKPOINT_DIR / "final"
+    save_checkpoint(model, save_path)
+    print(f"Training completed in : {time.time() - t0:.2f}s")
+    print(f"Final valuation loss : {val_loss:.4f}, Perplexity: {math.exp(val_loss):.4f}")
+    print(f"Model saved at {save_path}")
+
+
+if __name__ == "__main__":
+    main()

@@ -51,15 +51,15 @@ class NanoChatConfig(PretrainedConfig):
 
     def __init__(
         self,
-        sequence_len=2048,
-        vocab_size=32768,
-        n_layer=12,
-        n_head=6,
-        n_kv_head=6,
-        n_embd=768,
-        window_pattern="SSSL",
-        **kwargs,  # HF passes extra fields (torch_dtype, etc.)
-    ):
+            sequence_len: object = 2048,
+            vocab_size: object = 32768,
+            n_layer: object = 12,
+            n_head: object = 6,
+            n_kv_head: object = 6,
+            n_embd: object = 768,
+            window_pattern: object = "SSSL",
+            **kwargs: object,  # HF passes extra fields (torch_dtype, etc.)
+    ) -> None:
         self.sequence_len = sequence_len
         self.vocab_size = vocab_size
         self.n_layer = n_layer

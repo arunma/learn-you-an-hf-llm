@@ -48,3 +48,48 @@ Type your code below. Delete this docstring once you've internalised the
 structure.
 ----------------------------------------------------------------------------
 """
+import os
+from pathlib import Path
+
+from tokenizers import Tokenizer, models, pre_tokenizers, decoders, trainers
+
+CACHE_DIR=Path(os.path.expanduser('~/.cache/hf_pipeline'))
+VOCAB_SIZE=4096
+SPECIAL_TOKENS=["<|pad|>", "<|bos|>", "<|eos|>"]
+
+def main() -> None:
+    train_text = (CACHE_DIR/"train.txt").read_text()
+
+    tokenizer = Tokenizer(model=models.BPE())
+    tokenizer.pre_tokenizer=pre_tokenizers.ByteLevel(add_prefix_space=True)
+    tokenizer.decoder=decoders.ByteLevel()
+
+    trainer = trainers.BpeTrainer(
+        vocab_size=VOCAB_SIZE,
+        special_tokens=SPECIAL_TOKENS,
+        min_frequency=2,
+        show_progress=True
+    )
+
+    chunks = (train_text[i : i + 10_000] for i in range(0, len(train_text), 10_000))
+    tokenizer.train_from_iterator(chunks, trainer=trainer)
+    out_path = CACHE_DIR/"tokenizer.json"
+
+    tokenizer.save(str(out_path))
+
+    avg_chars_per_token = len(train_text) / len(tokenizer.encode(train_text).ids)
+    sample ="The quick brown fox jumps over the lazy dog"
+    encoded = tokenizer.encode(sample)
+
+    print("Average chars per token:", avg_chars_per_token)
+    print("Sample:", sample)
+    print("Encoded tokens:", encoded.tokens[:8])
+    print("Encoded IDs:", encoded.ids[:8])
+
+
+
+
+
+
+if __name__ == "__main__":
+    main()
