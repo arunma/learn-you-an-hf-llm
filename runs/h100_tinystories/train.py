@@ -77,12 +77,11 @@ def main() -> None:
     print(f"TensorBoard log dir: {TB_LOG_DIR}")
 
     tokenizer = Tokenizer.from_file(str(DATA_DIR / "tokenizer.json"))
-    train_text = (DATA_DIR / "train.txt").read_text()
-    val_text = (DATA_DIR / "val.txt").read_text()
 
-    print("Tokenizing corpus...")
-    train_ids = torch.tensor(tokenizer.encode(train_text).ids, dtype=torch.long)
-    val_ids = torch.tensor(tokenizer.encode(val_text).ids, dtype=torch.long)
+    # Pre-tokenized tensors written by prepare_data.py — load directly
+    print("Loading pre-tokenized corpus...")
+    train_ids = torch.load(DATA_DIR / "train_ids.pt")
+    val_ids = torch.load(DATA_DIR / "val_ids.pt")
     print(f"Train tokens: {len(train_ids):,}  |  Val tokens: {len(val_ids):,}")
 
     config = NanoChatConfig(
