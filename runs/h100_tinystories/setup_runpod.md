@@ -103,9 +103,22 @@ the pod** (changes to your account key only take effect for new pods).
 
 ### 5. Pull your code and install
 
+**Fresh pod (first-time clone):**
+
 ```bash
+cd /workspace
 git clone https://github.com/<your-username>/learn-you-an-hf-llm.git
 cd learn-you-an-hf-llm
+pip install -e .
+```
+
+**Existing pod (already cloned, picking up new commits):**
+
+```bash
+cd /workspace/learn-you-an-hf-llm
+git pull
+# only re-run pip install if pyproject.toml changed
+# (look for it in `git pull` output — if not mentioned, skip):
 pip install -e .
 ```
 
@@ -113,8 +126,8 @@ If the repo is private, GitHub will prompt for username + token. Create a
 token at https://github.com/settings/tokens (classic, scope `repo`) and
 paste it as the password.
 
-The "RunPod PyTorch 2.4" template already has PyTorch + CUDA + most ML
-libs preinstalled, so `pip install -e .` mainly installs the repo's
+The "RunPod PyTorch 2.8.0" template already has PyTorch + CUDA + most
+ML libs preinstalled, so `pip install -e .` mainly installs the repo's
 extras (`tokenizers`, `datasets`, `safetensors`, `tensorboard`).
 
 ---
