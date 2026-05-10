@@ -28,11 +28,12 @@ RUN_DIR = Path(__file__).resolve().parent
 TOKENIZER_PATH = RUN_DIR / "data_cache" / "tokenizer.json"
 MODEL_PATH = RUN_DIR / "checkpoints" / "final"
 
-DEVICE = (
-    "mps" if torch.backends.mps.is_available()
-    else "cuda" if torch.cuda.is_available()
-    else "cpu"
-)
+# DEVICE = (
+#     "mps" if torch.backends.mps.is_available()
+#     else "cuda" if torch.cuda.is_available()
+#     else "cpu"
+# )
+DEVICE="cpu"
 
 # --- Load once at import time --------------------------------------------
 print(f"Loading tokenizer from {TOKENIZER_PATH}...")
@@ -41,6 +42,18 @@ tokenizer = Tokenizer.from_file(str(TOKENIZER_PATH))
 print(f"Loading model from {MODEL_PATH} (device={DEVICE})...")
 model = NanoChatModel.from_pretrained(MODEL_PATH).to(DEVICE)
 model.eval()
+
+# HF's from_pretrained loading path can leave the RoPE cos/sin buffers
+# (registered with persistent=False, so not in the state_dict) partially
+# uninitialised — sometimes a few entries come back as NaN, which then
+# poisons every attention layer's q/k via RoPE multiplication and crashes
+# torch.multinomial during sampling. Re-running _init_rope after load
+# overwrites the buffers with the correct deterministic values.
+head_dim = model.config.n_embd // model.config.n_head
+model._init_rope(model.config.sequence_len, head_dim)
+model.cos = model.cos.to(DEVICE)
+model.sin = model.sin.to(DEVICE)
+
 print(f"Loaded {model.num_parameters():,} params.")
 
 
