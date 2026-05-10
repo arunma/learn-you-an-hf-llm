@@ -81,25 +81,55 @@ Provisioning takes ~1–2 minutes. The pod's status goes
 
 ### 4. Connect via SSH
 
-On the pod detail page, click **Connect → SSH over exposed TCP**. RunPod
-shows a command like:
+On the pod detail page, click **Connect**. RunPod offers two SSH methods:
+
+**A. SSH via runpod.io proxy** (default, recommended)
+
+This is what you'll see at the top of the Connect dialog. The command
+looks like:
+
+```bash
+ssh <pod-id>-<hash>@ssh.runpod.io -i ~/.ssh/<your-key>
+# real example:
+# ssh nrw0yf1b7pvg7a-644120c1@ssh.runpod.io -i ~/.ssh/id_ed25519_arunma
+```
+
+What's happening: `ssh.runpod.io` is RunPod's SSH bastion. You
+authenticate against the proxy with your public key (uploaded to your
+RunPod account in step 1), and the proxy forwards you into the pod as
+root. No port management on your side — just `ssh ...@ssh.runpod.io`,
+default port 22.
+
+This works as long as your account-level SSH key is set up. It does
+not depend on the pod template exposing TCP ports.
+
+**B. SSH over exposed TCP** (fallback / direct)
+
+If you also enabled "Expose TCP ports" on the pod template, RunPod
+also shows a direct command like:
 
 ```bash
 ssh root@123.45.67.89 -p 12345 -i ~/.ssh/id_ed25519
 ```
 
-A few RunPod-specific quirks:
-- User is `root`, not `ubuntu` (unlike Lambda or GCP).
-- SSH port is **not 22** — it's a randomly assigned high port shown in the
-  Connect dialog. Always copy the full command from the dashboard.
-- If the Connect dialog doesn't show an SSH command at all, your pod
-  template doesn't have SSH exposed by default. Use the **Web Terminal**
-  in the dashboard instead — same shell, different transport.
+This bypasses the proxy and goes straight to the pod's IP on a
+randomly assigned high port. Slightly faster for big file transfers
+but requires the right port and IP, both of which change per-pod.
 
-If SSH refuses with "Permission denied (publickey)", your local key
-doesn't match the one in your RunPod account settings. Fix the key in
-**Account → Settings → SSH Public Keys**, then **terminate and redeploy
-the pod** (changes to your account key only take effect for new pods).
+**Quirks for either method:**
+- Inside the pod you're `root`, working directory is `/workspace`.
+- If SSH refuses with "Permission denied (publickey)", your local key
+  doesn't match the one in your RunPod account settings. Fix the key
+  in **Account → Settings → SSH Public Keys**, then **terminate and
+  redeploy the pod** — changes to your account key only take effect
+  for new pods.
+- If neither command appears in the Connect dialog at all, fall back
+  to the **Web Terminal** in the dashboard (same shell, different
+  transport).
+
+The rest of this guide assumes the proxy method (option A) since it's
+RunPod's default. If you used exposed TCP, swap `<pod-id>-<hash>@ssh.runpod.io`
+for `root@<ip> -p <port>` in any later `ssh` / `scp` command.
 
 ### 5. Pull your code and install
 
@@ -225,10 +255,16 @@ tensorboard --logdir=tb_logs --port=6006 --bind_all
 Leave it running. `--bind_all` makes it listen on all interfaces, which
 is needed for the SSH tunnel below.
 
-**From your laptop**, open a new terminal and tunnel port 6006:
+**From your laptop**, open a new terminal and tunnel port 6006 through
+the same SSH connection method you used in step 4:
 
 ```bash
-ssh -L 6006:localhost:6006 root@<pod-ip> -p <pod-port>
+# proxy method (option A)
+ssh -L 6006:localhost:6006 <pod-id>-<hash>@ssh.runpod.io -i ~/.ssh/<your-key>
+
+# or exposed-TCP method (option B)
+ssh -L 6006:localhost:6006 root@<pod-ip> -p <pod-port> -i ~/.ssh/<your-key>
+
 # leave this connection open; it's just the tunnel
 ```
 
@@ -243,22 +279,37 @@ the pod.
 ### 9. Pull checkpoints back to your laptop
 
 When training prints `Final model saved`, scp the checkpoint folder
-home. Use the SSH port RunPod assigned (in the Connect dialog —
-**not** port 22):
+home using the same SSH method you used in step 4.
+
+**Proxy method (option A — what most people use):**
 
 ```bash
 # from your laptop, in the repo root
-scp -P 12345 -r root@123.45.67.89:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/checkpoints \
-       runs/h100_tinystories/checkpoints
+scp -i ~/.ssh/<your-key> -r \
+    <pod-id>-<hash>@ssh.runpod.io:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/checkpoints \
+    runs/h100_tinystories/checkpoints
 
 # also pull the tokenizer if you want local inference
-scp -P 12345 root@123.45.67.89:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/data_cache/tokenizer.json \
-       runs/h100_tinystories/data_cache/tokenizer.json
+scp -i ~/.ssh/<your-key> \
+    <pod-id>-<hash>@ssh.runpod.io:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/data_cache/tokenizer.json \
+    runs/h100_tinystories/data_cache/tokenizer.json
 ```
 
-The `-P` (capital P) is mandatory; without it scp tries port 22 and
-fails. RunPod's working directory inside the pod is `/workspace`, not
-`/root` — the `git clone` lives there.
+No `-P` flag — the proxy listens on default port 22.
+
+**Exposed TCP method (option B):**
+
+```bash
+scp -P <pod-port> -i ~/.ssh/<your-key> -r \
+    root@<pod-ip>:/workspace/learn-you-an-hf-llm/runs/h100_tinystories/checkpoints \
+    runs/h100_tinystories/checkpoints
+```
+
+The `-P` (capital P, not `-p`) is mandatory; without it scp tries port
+22 and fails.
+
+RunPod's working directory inside the pod is `/workspace`, not `/root`
+— the `git clone` lives there.
 
 **Verify the checkpoint actually downloaded *before* terminating
 anything:**
