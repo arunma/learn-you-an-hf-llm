@@ -193,6 +193,40 @@ tail -f /workspace/learn-you-an-hf-llm/runs/h100_tinystories/train.log
 Total time including setup, tokenization, compile warm-up, and 15K
 training steps: ~30–35 min on H100 SXM.
 
+### 8a. (Optional) Live monitoring with TensorBoard
+
+`train.py` writes scalars to `runs/h100_tinystories/tb_logs/` as
+training progresses (`train/loss`, `train/lr`, `val/loss`,
+`val/perplexity`, `perf/tokens_per_sec`). To view them live in your
+laptop's browser, you need two things: a TensorBoard server running on
+the pod, and an SSH tunnel from your laptop to that server.
+
+**On the pod**, in a second tmux window (`Ctrl-b c` to create one,
+`Ctrl-b 0` / `Ctrl-b 1` to switch):
+
+```bash
+cd /workspace/learn-you-an-hf-llm/runs/h100_tinystories
+tensorboard --logdir=tb_logs --port=6006 --bind_all
+```
+
+Leave it running. `--bind_all` makes it listen on all interfaces, which
+is needed for the SSH tunnel below.
+
+**From your laptop**, open a new terminal and tunnel port 6006:
+
+```bash
+ssh -L 6006:localhost:6006 root@<pod-ip> -p <pod-port>
+# leave this connection open; it's just the tunnel
+```
+
+Then open **http://localhost:6006** in your browser. You'll see five
+scalar tags. The `train/loss` curve is noisy — drag the **Smoothing
+slider** (top of the dashboard) to ~0.95 to make the trend visible.
+
+When training finishes you can kill the TensorBoard process with
+`Ctrl-c` in its tmux window. Or leave it running until you terminate
+the pod.
+
 ### 9. Pull checkpoints back to your laptop
 
 When training prints `Final model saved`, scp the checkpoint folder

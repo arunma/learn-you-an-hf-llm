@@ -19,6 +19,7 @@ from pathlib import Path
 
 import torch
 from tokenizers import Tokenizer
+from torch.utils.tensorboard import SummaryWriter
 
 from hf_nanochat.model import NanoChatConfig, NanoChatModel
 
@@ -26,6 +27,7 @@ from hf_nanochat.model import NanoChatConfig, NanoChatModel
 RUN_DIR = Path(__file__).resolve().parent
 DATA_DIR = RUN_DIR / "data_cache"
 CHECKPOINT_DIR = RUN_DIR / "checkpoints"
+TB_LOG_DIR = RUN_DIR / "tb_logs"
 
 # Model — bumped from copywork's 4/4/256/256 to capture coherent stories
 N_LAYERS = 8
@@ -70,6 +72,9 @@ def save_checkpoint(model, path):
 
 def main() -> None:
     CHECKPOINT_DIR.mkdir(parents=True, exist_ok=True)
+    TB_LOG_DIR.mkdir(parents=True, exist_ok=True)
+    writer = SummaryWriter(log_dir=str(TB_LOG_DIR))
+    print(f"TensorBoard log dir: {TB_LOG_DIR}")
 
     tokenizer = Tokenizer.from_file(str(DATA_DIR / "tokenizer.json"))
     train_text = (DATA_DIR / "train.txt").read_text()
@@ -119,6 +124,10 @@ def main() -> None:
         scheduler.step()
         optimizer.zero_grad(set_to_none=True)
 
+        # Per-step scalars — TB smoothing slider handles the noise
+        writer.add_scalar("train/loss", out.loss.item(), step)
+        writer.add_scalar("train/lr", scheduler.get_last_lr()[0], step)
+
         if step % EVAL_EVERY == 0 or step == NUM_STEPS - 1:
             model.eval()
             with torch.no_grad():
@@ -143,6 +152,11 @@ def main() -> None:
                 f"{tok_per_sec:,.0f} tok/s"
             )
 
+            # Eval-cadence scalars
+            writer.add_scalar("val/loss", val_loss, step)
+            writer.add_scalar("val/perplexity", math.exp(val_loss), step)
+            writer.add_scalar("perf/tokens_per_sec", tok_per_sec, step)
+
         if (step + 1) % SAVE_EVERY == 0 and step > 0:
             ckpt_path = CHECKPOINT_DIR / f"step_{step + 1:05d}"
             save_checkpoint(model, ckpt_path)
@@ -150,6 +164,7 @@ def main() -> None:
 
     save_path = CHECKPOINT_DIR / "final"
     save_checkpoint(model, save_path)
+    writer.close()
     print(f"Training completed in : {time.time() - t0:.2f}s")
     print(f"Final valuation loss : {val_loss:.4f}, Perplexity: {math.exp(val_loss):.4f}")
     print(f"Model saved at {save_path}")

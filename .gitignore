@@ -9,6 +9,7 @@ __pycache__/
 .mypy_cache/
 runs/**/data_cache/
 runs/**/checkpoints/
+runs/**/tb_logs/
 runs/**/*.log
 wandb/
 build/
