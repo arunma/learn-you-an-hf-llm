@@ -49,6 +49,9 @@ def generate(
     max_new_tokens: int,
     temperature: float,
     top_k: int,
+    top_p: float,
+    repetition_penalty: float,
+    no_repeat_ngram_size: int,
     seed: int,
 ) -> str:
     """Generate a continuation for `prompt` using the loaded model."""
@@ -70,6 +73,9 @@ def generate(
             do_sample=True,
             temperature=float(temperature),
             top_k=int(top_k),
+            top_p=float(top_p),
+            repetition_penalty=float(repetition_penalty),
+            no_repeat_ngram_size=int(no_repeat_ngram_size),
         )
     return tokenizer.decode(output[0].tolist())
 
@@ -113,7 +119,7 @@ with gr.Blocks(title="TinyStories nanochat") as demo:
                 10, 500, value=200, step=10, label="Max new tokens"
             )
             temperature = gr.Slider(
-                0.1, 1.5, value=0.8, step=0.05,
+                0.1, 1.5, value=0.7, step=0.05,
                 label="Temperature",
                 info="Lower = more deterministic; higher = more random",
             )
@@ -122,13 +128,37 @@ with gr.Blocks(title="TinyStories nanochat") as demo:
                 label="Top-k",
                 info="Sample only from the K most-likely next tokens",
             )
+            top_p = gr.Slider(
+                0.5, 1.0, value=0.95, step=0.05,
+                label="Top-p (nucleus)",
+                info="Keep tokens whose cumulative prob ≤ p; 1.0 = disabled",
+            )
+            repetition_penalty = gr.Slider(
+                1.0, 2.0, value=1.3, step=0.05,
+                label="Repetition penalty",
+                info="Divides logits of already-generated tokens; 1.0 = none, 1.2-1.5 helps break loops",
+            )
+            no_repeat_ngram_size = gr.Slider(
+                0, 5, value=0, step=1,
+                label="No-repeat n-gram size",
+                info="Forbid any n-gram of this size from repeating; 0 = disabled",
+            )
             seed = gr.Number(
                 value=-1, precision=0,
                 label="Seed",
                 info="-1 = random each run; any non-negative int = reproducible",
             )
 
-    inputs = [prompt, max_new_tokens, temperature, top_k, seed]
+    inputs = [
+        prompt,
+        max_new_tokens,
+        temperature,
+        top_k,
+        top_p,
+        repetition_penalty,
+        no_repeat_ngram_size,
+        seed,
+    ]
     run.click(generate, inputs=inputs, outputs=output)
     prompt.submit(generate, inputs=inputs, outputs=output)
 

@@ -1,17 +1,22 @@
 """Single-H100 training run on TinyStories.
 
 This is your copywork_train.py adapted for a real training run on a rented
-Lambda Labs H100. See README.md in this folder for the full Lambda workflow.
+Lambda Labs / RunPod H100. See README.md or setup_runpod.md in this folder
+for the full provisioning workflow.
 
-Configured for the "fairly coherent in ~30 minutes on H100" recipe:
+Configured for the "approaching the TinyStories floor" recipe:
   - 28M-param NanoChatModel  (n_layer=8, n_embd=512)
   - TinyStories corpus       (~470M tokens)
-  - 15,000 steps             (~250M training tokens at BS=64, SEQ_LEN=512)
-  - Cosine LR with 200-step linear warmup
+  - 50,000 steps             (~833M training tokens at BS=64, SEQ_LEN=512;
+                              ~1.7 epochs over TinyStories)
+  - Cosine LR with 500-step linear warmup
   - bf16 autocast + torch.compile for H100 throughput
-  - Periodic checkpoints every 2,500 steps
+  - Periodic checkpoints every 5,000 steps
 
-Run AFTER `prepare_data.py` has populated ./data_cache/.
+Wall-clock on H100 SXM at 1.2M tok/s: ~20-25 min for 50K steps.
+
+Run AFTER `prepare_data.py` has populated ./data_cache/ with train_ids.pt
+and val_ids.pt.
 """
 import math
 import time
@@ -39,11 +44,11 @@ SEQ_LEN = 512
 BATCH_SIZE = 64
 LR = 3e-4
 WEIGHT_DECAY = 0.1
-NUM_STEPS = 15_000
-WARMUP_STEPS = 200
-EVAL_EVERY = 500
+NUM_STEPS = 50_000          # ~833M tokens at BS=64, SEQ_LEN=512 (~1.7 epochs over TinyStories)
+WARMUP_STEPS = 500          # scaled with NUM_STEPS — ~1% warmup is standard
+EVAL_EVERY = 1_000          # every ~30 sec at H100 throughput; less log spam
 EVAL_BATCHES = 20
-SAVE_EVERY = 2_500
+SAVE_EVERY = 5_000          # 10 checkpoints over the run
 GRAD_CLIP = 1.0
 
 DEVICE = "cuda"  # this script is H100-only

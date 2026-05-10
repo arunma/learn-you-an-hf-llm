@@ -190,7 +190,7 @@ Downloads TinyStories from HF Hub (~1 GB), writes `data_cache/train.txt`
 and `val.txt`, then trains a BPE tokenizer saved to
 `data_cache/tokenizer.json`. Only needs to run once per pod.
 
-### 8. Run training inside tmux (~30 min on H100)
+### 8. Run training inside tmux (~20-25 min on H100 for 50K steps)
 
 **Always wrap training in tmux.** A network blip kills your SSH session,
 and without tmux it kills the training too — losing 30 minutes of paid
