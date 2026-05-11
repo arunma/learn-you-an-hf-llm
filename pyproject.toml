@@ -22,4 +22,4 @@ hub   = ["huggingface_hub"]
 wandb = ["wandb"]
 
 [tool.setuptools.packages.find]
-include = ["hf_nanochat*", "hf_pipeline*"]
+include = ["hf_nanochat*"]

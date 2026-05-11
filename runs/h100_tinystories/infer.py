@@ -28,12 +28,12 @@ RUN_DIR = Path(__file__).resolve().parent
 TOKENIZER_PATH = RUN_DIR / "data_cache" / "tokenizer.json"
 MODEL_PATH = RUN_DIR / "checkpoints" / "final"
 
-# DEVICE = (
-#     "mps" if torch.backends.mps.is_available()
-#     else "cuda" if torch.cuda.is_available()
-#     else "cpu"
-# )
-DEVICE="cpu"
+DEVICE = (
+    "mps" if torch.backends.mps.is_available()
+    else "cuda" if torch.cuda.is_available()
+    else "cpu"
+)
+#DEVICE="cpu"
 
 # --- Load once at import time --------------------------------------------
 print(f"Loading tokenizer from {TOKENIZER_PATH}...")
