@@ -1,20 +1,12 @@
-"""Single-H100 training run on TinyStories — d12 (91M params).
-
-Larger sibling of train.py. Same architecture family, same corpus, same
-training loop — bumped depth and width for narrative coherence. Shares
-output paths with train.py; running this overwrites whatever's in
-checkpoints/ and tb_logs/.
+"""Single-H100 training run on TinyStories.
 
 Configured for the "coherent stories" recipe:
   - 91M-param NanoChatModel  (n_layer=12, n_embd=768, n_head=12)
   - TinyStories corpus       (~470M tokens — same as d8)
-  - 30,000 steps             (~983M training tokens at BS=64, SEQ_LEN=512;
+  - 30,000 steps             (~983M training tokens at B=64, T=512;
                               ~2.1 epochs over TinyStories)
-  - Cosine LR with 500-step linear warmup
   - bf16 autocast + torch.compile for H100 throughput
   - Periodic checkpoints every 5,000 steps
-
-Wall-clock on H100 SXM: ~50 min for 30K steps at this size.
 """
 import math
 import time
@@ -26,31 +18,31 @@ from torch.utils.tensorboard import SummaryWriter
 
 from hf_nanochat.model import NanoChatConfig, NanoChatModel
 
-# Paths — same output dirs as train.py; last run wins
+# Paths
 RUN_DIR = Path(__file__).resolve().parent
 DATA_DIR = RUN_DIR / "data_cache"
 CHECKPOINT_DIR = RUN_DIR / "checkpoints"
 TB_LOG_DIR = RUN_DIR / "tb_logs"
 
-# Model — d12: 91M params (vs d8's 28M) for multi-sentence coherence
+# Model — d12: 91M params
 N_LAYERS = 12
 N_HEADS = 12
 N_KV_HEAD = 12
 N_EMBD = 768
 SEQ_LEN = 512
 
-# Training — same shape as d8; fewer steps since per-step compute is ~3x bigger
+# Training — same shape as d8
 BATCH_SIZE = 64
 LR = 3e-4
 WEIGHT_DECAY = 0.1
-NUM_STEPS = 30_000          # ~983M tokens at BS=64, SEQ_LEN=512 (~2.1 epochs over TinyStories)
-WARMUP_STEPS = 500          # ~1.7% warmup
-EVAL_EVERY = 1_000          # every ~1 min at H100 throughput
+NUM_STEPS = 30_000          # ~983M tokens at B=64, T=512
+WARMUP_STEPS = 500
+EVAL_EVERY = 1_000
 EVAL_BATCHES = 20
-SAVE_EVERY = 5_000          # 6 checkpoints over the run
+SAVE_EVERY = 5_000
 GRAD_CLIP = 1.0
 
-DEVICE = "cuda"  # this script is H100-only
+DEVICE = "cuda"
 
 
 def get_batch(data: torch.Tensor, batch_size, seq_len, device):
@@ -61,7 +53,6 @@ def get_batch(data: torch.Tensor, batch_size, seq_len, device):
 
 
 def cosine_with_warmup(step):
-    """Linear warmup for WARMUP_STEPS, then cosine decay to 0."""
     if step < WARMUP_STEPS:
         return step / WARMUP_STEPS
     progress = (step - WARMUP_STEPS) / max(1, NUM_STEPS - WARMUP_STEPS)
@@ -69,7 +60,6 @@ def cosine_with_warmup(step):
 
 
 def save_checkpoint(model, path):
-    """Save the underlying (uncompiled) model in HF format."""
     base = model._orig_mod if hasattr(model, "_orig_mod") else model
     base.save_pretrained(path)
 
@@ -82,7 +72,7 @@ def main() -> None:
 
     tokenizer = Tokenizer.from_file(str(DATA_DIR / "tokenizer.json"))
 
-    # Pre-tokenized tensors written by prepare_data.py — load directly
+    # Pre-tokenized tensors written by prepare_data.py
     print("Loading pre-tokenized corpus...")
     train_ids = torch.load(DATA_DIR / "train_ids.pt")
     val_ids = torch.load(DATA_DIR / "val_ids.pt")
@@ -100,7 +90,7 @@ def main() -> None:
     model = NanoChatModel(config).to(DEVICE)
     print(f"Parameters: {model.num_parameters():,}, Device: {DEVICE}")
 
-    print("Compiling model (first step will be slow due to graph tracing)...")
+    print("Compiling model...")
     model = torch.compile(model)
 
     optimizer = torch.optim.AdamW(
@@ -127,7 +117,6 @@ def main() -> None:
         scheduler.step()
         optimizer.zero_grad(set_to_none=True)
 
-        # Per-step scalars — TB smoothing slider handles the noise
         writer.add_scalar("train/loss", out.loss.item(), step)
         writer.add_scalar("train/lr", scheduler.get_last_lr()[0], step)
 
@@ -155,7 +144,6 @@ def main() -> None:
                 f"{tok_per_sec:,.0f} tok/s"
             )
 
-            # Eval-cadence scalars
             writer.add_scalar("val/loss", val_loss, step)
             writer.add_scalar("val/perplexity", math.exp(val_loss), step)
             writer.add_scalar("perf/tokens_per_sec", tok_per_sec, step)

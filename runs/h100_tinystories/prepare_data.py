@@ -1,19 +1,14 @@
 """Stage 0 — Download TinyStories, train BPE tokenizer, pre-tokenize the corpus.
 
 Combines what copywork sections 01a + 01b do for WikiText, but pointed at
-TinyStories instead. One script because this is a one-shot setup before the
-training run on Lambda Labs — no need for the disk-passing-between-stages
-discipline of the copywork pipeline.
-
-Each step is idempotent: skipped if its output file already exists. Safe to
-re-run on the same pod without re-downloading or re-tokenizing.
+TinyStories instead.
 
 Output:
     ./data_cache/train.txt        (~1.8 GB of concatenated stories)
     ./data_cache/val.txt          (~18 MB)
     ./data_cache/tokenizer.json   (~120 KB BPE)
-    ./data_cache/train_ids.pt     (~3.7 GB int64 tensor — pre-tokenized train)
-    ./data_cache/val_ids.pt       (~38 MB int64 tensor — pre-tokenized val)
+    ./data_cache/train_ids.pt     (~3.7 GB int64 tensor)
+    ./data_cache/val_ids.pt       (~38 MB int64 tensor)
 """
 from pathlib import Path
 
@@ -26,16 +21,14 @@ DATA_DIR = Path(__file__).resolve().parent / "data_cache"
 VOCAB_SIZE = 4096
 SPECIAL_TOKENS = ["<|pad|>", "<|bos|>", "<|eos|>"]
 
-# Chunk size for parallel encode_batch — bounds peak memory during tokenization
 TOKENIZE_CHUNK_CHARS = 1_000_000
 
 
 def tokenize_corpus(text: str, tokenizer: Tokenizer) -> torch.Tensor:
     """Tokenize a large string using parallel chunked encoding.
-
-    encode_batch is multi-threaded in Rust; chunks are processed in parallel
-    across all available CPU cores. Memory bounded by chunk size * batch
-    rather than by the full corpus.
+    * Encode_batch is multi-threaded in Rust
+    * Chunks are processed in parallel
+    across all available CPU cores.
     """
     chunks = [
         text[i : i + TOKENIZE_CHUNK_CHARS]
