@@ -1,6 +1,6 @@
 # runs/h100_tinystories
 
-Training pipeline for the model in [`BLOG.md`](BLOG.md). 91M params, ~20 min on a rented H100, ~$1.50.
+Training pipeline for the model described in [the blog post](https://www.arunma.com/2026/05/11/small-dog-small-language-model-training-a-transformer-for-5/). 91M params, ~20 min on a rented H100, ~$1.50.
 
 On a RunPod H100:
 

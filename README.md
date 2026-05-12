@@ -17,8 +17,6 @@ Opens a Gradio UI at `http://127.0.0.1:7860`. You'll need `runs/h100_tinystories
 
 Rent an H100 on RunPod (~$3/hr), then follow [`runs/h100_tinystories/setup_runpod.md`](runs/h100_tinystories/setup_runpod.md). The 91M-param run is ~20 minutes.
 
-Long write-up of the whole journey: [`runs/h100_tinystories/BLOG.md`](runs/h100_tinystories/BLOG.md).
-
 ## License
 
 MIT.
